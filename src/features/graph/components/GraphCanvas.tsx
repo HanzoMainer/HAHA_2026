@@ -6,6 +6,10 @@ import {
   MiniMap,
   useNodesState,
   useEdgesState,
+  BaseEdge,
+  EdgeLabelRenderer,
+  getSmoothStepPath,
+  type EdgeProps,
 } from "@xyflow/react";
 import type { NodeMouseHandler } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -15,10 +19,93 @@ import { NodeOrg } from "./NodeOrg";
 import { NodeEvent } from "./NodeEvent";
 import type { GraphNode, GraphEdge } from "../types/graph.types";
 
+function MultiLabelEdge({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  data,
+  style,
+  markerEnd,
+}: EdgeProps) {
+  const [edgePath, labelX, labelY] = getSmoothStepPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+  });
+
+  const label = (data as { label?: string } | undefined)?.label ?? "";
+  const lines = label.split("\n").filter(Boolean);
+  const lineHeight = 16;
+  const paddingX = 8;
+  const paddingY = 5;
+  const boxWidth = Math.max(...lines.map((l) => l.length)) * 6.5 + paddingX * 2;
+  const boxHeight = lines.length * lineHeight + paddingY * 2;
+
+  return (
+    <>
+      <BaseEdge id={id} path={edgePath} style={style} markerEnd={markerEnd} />
+
+      {lines.length > 0 && (
+        <EdgeLabelRenderer>
+          <div
+            style={{
+              position: "absolute",
+              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+              pointerEvents: "all",
+            }}
+            className="nodrag nopan"
+          >
+            <svg
+              width={boxWidth}
+              height={boxHeight}
+              style={{ overflow: "visible", display: "block" }}
+            >
+              <rect
+                x={0}
+                y={0}
+                width={boxWidth}
+                height={boxHeight}
+                rx={4}
+                fill="oklch(0.34 0 0)"
+                stroke="oklch(0.25 0 0)"
+                strokeWidth={1}
+              />
+              {lines.map((line, i) => (
+                <text
+                  key={i}
+                  x={boxWidth / 2}
+                  y={paddingY + i * lineHeight + lineHeight * 0.75}
+                  textAnchor="middle"
+                  fill="oklch(0.75 0 0)"
+                  fontSize={11}
+                  fontFamily="inherit"
+                >
+                  {line}
+                </text>
+              ))}
+            </svg>
+          </div>
+        </EdgeLabelRenderer>
+      )}
+    </>
+  );
+}
+
 const nodeTypes = {
   person: NodePerson,
   organization: NodeOrg,
   event: NodeEvent,
+};
+
+const edgeTypes = {
+  multiLabel: MultiLabelEdge,
 };
 
 interface GraphCanvasProps {
@@ -34,7 +121,6 @@ export function GraphCanvas({
   edges: initialEdges,
   onNodeSelect,
   selectedNodeId,
-  isLoading,
 }: GraphCanvasProps) {
   const [nodes, setNodes, onNodesChange] =
     useNodesState<GraphNode>(initialNodes);
@@ -48,7 +134,7 @@ export function GraphCanvas({
         selected: node.id === selectedNodeId,
       })),
     );
-  }, [initialNodes, initialEdges, setNodes]);
+  }, [initialNodes, setNodes]);
 
   useEffect(() => {
     setNodes((prev) =>
@@ -63,31 +149,19 @@ export function GraphCanvas({
     setEdges(
       initialEdges.map((edge) => ({
         ...edge,
-        type: "smoothstep",
+        type: "multiLabel",
+        data: { label: typeof edge.label === "string" ? edge.label : "" },
+        label: undefined,
         style: {
-          strokeWidth: 2, 
+          strokeWidth: 2,
           stroke: edge.animated ? "var(--node-person)" : "var(--border)",
         },
-        labelStyle: {
-          fill: "oklch(0.75 0 0)",
-          fontSize: 11,
-          fontFamily: "inherit",
-        },
-        labelBgStyle: {
-          fill: "oklch(0.34 0 0)",
-          stroke: "oklch(0.25 0 0)",
-          strokeWidth: 1,
-        },
-        labelBgPadding: [6, 3] as [number, number],
-        labelBgBorderRadius: 4,
       })),
     );
   }, [initialEdges, setEdges]);
 
   const onNodeClick: NodeMouseHandler<GraphNode> = useCallback(
-    (_, node) => {
-      onNodeSelect?.(node);
-    },
+    (_, node) => onNodeSelect?.(node),
     [onNodeSelect],
   );
 
@@ -97,15 +171,6 @@ export function GraphCanvas({
 
   return (
     <div style={{ width: "100%", height: "100%" }} className="relative">
-      {isLoading && (
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-            <p className="text-sm text-muted-foreground">Анализирую связи...</p>
-          </div>
-        </div>
-      )}
-
       <ReactFlow<GraphNode, GraphEdge>
         nodes={nodes}
         edges={edges}
@@ -114,11 +179,12 @@ export function GraphCanvas({
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitView
         className="bg-background"
         defaultEdgeOptions={{
           style: { strokeWidth: 2, stroke: "var(--border)" },
-          type: "smoothstep",
+          type: "multiLabel",
         }}
         proOptions={{ hideAttribution: true }}
       >

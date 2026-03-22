@@ -6,7 +6,7 @@ import { FilterBar } from "@/features/filters/components/FilterBar";
 import type { AppliedFilters } from "@/features/filters/components/FilterBar";
 import { Button } from "@/shared/components/button";
 import { Badge } from "@/shared/components/badge";
-import { Network, X, PanelRightOpen } from "lucide-react";
+import { Network, X } from "lucide-react";
 import { fetchGraphByQuery } from "@/features/graph/api/graph.api";
 import type {
   GraphData,
@@ -34,11 +34,9 @@ export function DashboardPage() {
       setGraphData(result.graphData);
       setAiResponse(result.aiResponse);
       setNewsMap(result.newsMap);
-      setRightPanelOpen(true);
     } catch (err) {
       console.error("Query failed:", err);
       setAiResponse("Не удалось получить данные. Попробуйте ещё раз.");
-      setRightPanelOpen(true);
     } finally {
       setIsLoading(false);
     }
@@ -46,7 +44,11 @@ export function DashboardPage() {
 
   const handleNodeSelect = useCallback((node: GraphNode | null) => {
     setSelectedNode(node);
-    if (node) setRightPanelOpen(true);
+    if (node) {
+      setRightPanelOpen(true);
+    } else {
+      setRightPanelOpen(false);
+    }
   }, []);
 
   const handleFiltersApply = useCallback((filters: AppliedFilters) => {
@@ -146,25 +148,17 @@ export function DashboardPage() {
               </Button>
             </div>
           )}
-
-          {!rightPanelOpen && !isEmpty && (
-            <Button
-              variant="secondary"
-              size="icon"
-              className="absolute top-4 right-4 h-9 w-9"
-              onClick={() => setRightPanelOpen(true)}
-            >
-              <PanelRightOpen className="w-4 h-4" />
-            </Button>
-          )}
         </div>
 
-        {rightPanelOpen && (
+        {rightPanelOpen && selectedNode && (
           <GraphSidebar
             node={selectedNode}
             news={nodeNews}
-            aiResponse={!selectedNode ? aiResponse : ""}
-            onClose={() => setRightPanelOpen(false)}
+            aiResponse=""
+            onClose={() => {
+              setRightPanelOpen(false);
+              setSelectedNode(null);
+            }}
           />
         )}
       </div>

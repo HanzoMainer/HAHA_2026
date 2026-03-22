@@ -37,9 +37,7 @@ function buildNewsMap(links: ApiLink[]): Map<string, NewsItem[]> {
 
   const add = (nodeId: string, link: ApiLink) => {
     const items = map.get(nodeId) ?? [];
-
     if (items.some((n) => n.title === link.title)) return;
-
     items.push({
       id: `${nodeId}-${link.title}-${link.date}`,
       title: link.title,
@@ -49,7 +47,6 @@ function buildNewsMap(links: ApiLink[]): Map<string, NewsItem[]> {
       summary: link.desc,
       url: undefined,
     });
-
     map.set(nodeId, items);
   };
 
@@ -61,6 +58,68 @@ function buildNewsMap(links: ApiLink[]): Map<string, NewsItem[]> {
   return map;
 }
 
+const COL_GAP = 320;
+const ROW_GAP = 120;
+
+function computePositions(
+  nodeIds: string[],
+  edges: { source: string; target: string }[],
+): Map<string, { x: number; y: number }> {
+  const inCount = new Map<string, number>(nodeIds.map((id) => [id, 0]));
+  edges.forEach((e) => inCount.set(e.target, (inCount.get(e.target) ?? 0) + 1));
+
+  const level = new Map<string, number>();
+  const queue: string[] = [];
+
+  nodeIds
+    .filter((id) => inCount.get(id) === 0)
+    .forEach((id) => {
+      level.set(id, 0);
+      queue.push(id);
+    });
+
+  if (!queue.length && nodeIds.length) {
+    level.set(nodeIds[0], 0);
+    queue.push(nodeIds[0]);
+  }
+
+  let head = 0;
+  while (head < queue.length) {
+    const id = queue[head++];
+    const nextLevel = (level.get(id) ?? 0) + 1;
+    edges
+      .filter((e) => e.source === id && !level.has(e.target))
+      .forEach((e) => {
+        level.set(e.target, nextLevel);
+        queue.push(e.target);
+      });
+  }
+
+  const maxLevel = Math.max(0, ...level.values());
+  nodeIds.forEach((id) => {
+    if (!level.has(id)) level.set(id, maxLevel + 1);
+  });
+
+  const columns = new Map<number, string[]>();
+  level.forEach((col, id) => {
+    if (!columns.has(col)) columns.set(col, []);
+    columns.get(col)!.push(id);
+  });
+
+  const pos = new Map<string, { x: number; y: number }>();
+  columns.forEach((ids, col) => {
+    const total = (ids.length - 1) * ROW_GAP;
+    ids.forEach((id, row) => {
+      pos.set(id, {
+        x: col * COL_GAP,
+        y: row * ROW_GAP - total / 2,
+      });
+    });
+  });
+
+  return pos;
+}
+
 export function mapApiResponseToGraphData(response: ApiResponse): {
   graphData: GraphData;
   aiResponse: string;
@@ -69,34 +128,47 @@ export function mapApiResponseToGraphData(response: ApiResponse): {
   const { answer, graph } = response;
   const newsMap = buildNewsMap(graph.links);
 
+  const edgeGroups = new Map<string, { source: string; target: string; labels: string[] }>();
+
+  graph.links.forEach((link) => {
+    const key = `${link.source}→${link.target}`;
+    const label = link.label.replace(/_/g, " ").toLowerCase();
+
+    if (!edgeGroups.has(key)) {
+      edgeGroups.set(key, { source: link.source, target: link.target, labels: [] });
+    }
+
+    const group = edgeGroups.get(key)!;
+    if (!group.labels.includes(label)) {
+      group.labels.push(label);
+    }
+  });
+
+  const rawEdges = Array.from(edgeGroups.values()).map((g, i) => ({
+    id: `e-${i}-${g.source}-${g.target}`,
+    source: g.source,
+    target: g.target,
+    label: g.labels.join("\n"),
+    animated: false,
+  }));
+
+  const positions = computePositions(
+    graph.nodes.map((n) => n.id),
+    rawEdges,
+  );
+
   const nodes = graph.nodes.map((apiNode) => ({
     id: apiNode.id,
     type: toEntityType(apiNode.type),
-    position: { x: 0, y: 0 },
+    position: positions.get(apiNode.id) ?? { x: 0, y: 0 },
     data: {
       label: apiNode.label,
       description: newsMap.get(apiNode.id)?.[0]?.summary,
     },
   }));
 
-  const seen = new Set<string>();
-  const edges = graph.links
-    .filter((link) => {
-      const key = `${link.source}|${link.target}|${link.label}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .map((link, i) => ({
-      id: `e-${i}-${link.source}-${link.target}`,
-      source: link.source,
-      target: link.target,
-      label: link.label.replace(/_/g, " ").toLowerCase(),
-      animated: false,
-    }));
-
   return {
-    graphData: { nodes, edges },
+    graphData: { nodes, edges: rawEdges },
     aiResponse: answer,
     newsMap,
   };

@@ -32,8 +32,8 @@ export function ChatPanel({ onQuery, isLoading, aiResponse }: ChatPanelProps) {
   };
 
   return (
-    <div className="w-80 flex flex-col border-r border-border bg-card">
-      <div className="p-4 border-b border-border">
+    <div className="w-80 shrink-0 h-full min-h-0 flex flex-col border-r border-border bg-card overflow-hidden">
+      <div className="shrink-0 p-4 border-b border-border">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center">
             <MessageSquare className="w-3.5 h-3.5 text-primary" />
@@ -82,7 +82,7 @@ export function ChatPanel({ onQuery, isLoading, aiResponse }: ChatPanelProps) {
       </div>
 
       {!aiResponse && (
-        <div className="p-4 border-b border-border">
+        <div className="shrink-0 p-4 border-b border-border">
           <div className="flex items-center gap-2 mb-3">
             <Lightbulb className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">
@@ -104,7 +104,7 @@ export function ChatPanel({ onQuery, isLoading, aiResponse }: ChatPanelProps) {
       )}
 
       {aiResponse && (
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 min-h-0 overflow-hidden">
           <div className="p-4">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
@@ -117,7 +117,7 @@ export function ChatPanel({ onQuery, isLoading, aiResponse }: ChatPanelProps) {
                 RAG
               </Badge>
             </div>
-            <div className="prose prose-sm prose-invert max-w-none">
+            <div className="prose prose-sm prose-invert max-w-72 min-w-0 w-full overflow-hidden">
               <div className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
                 {aiResponse}
               </div>

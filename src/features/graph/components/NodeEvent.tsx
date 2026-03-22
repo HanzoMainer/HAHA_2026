@@ -2,6 +2,13 @@ import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { Calendar } from "lucide-react";
 import type { EntityData } from "../types/graph.types";
 
+const hiddenHandle: React.CSSProperties = {
+  opacity: 0,
+  pointerEvents: "none",
+  width: 8,
+  height: 8,
+};
+
 export function NodeEvent({ data, selected }: NodeProps<Node<EntityData>>) {
   return (
     <div
@@ -15,11 +22,7 @@ export function NodeEvent({ data, selected }: NodeProps<Node<EntityData>>) {
         }
       `}
     >
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="bg-(--node-event)! w-2! h-2!"
-      />
+      <Handle type="target" position={Position.Left} style={hiddenHandle} />
       <div className="w-8 h-8 rounded flex items-center justify-center bg-(--node-event)/20">
         <Calendar className="w-4 h-4 text-(--node-event)" />
       </div>
@@ -31,11 +34,7 @@ export function NodeEvent({ data, selected }: NodeProps<Node<EntityData>>) {
           <span className="text-xs text-muted-foreground">{data.date}</span>
         )}
       </div>
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="bg-(--node-event)! w-2! h-2!"
-      />
+      <Handle type="source" position={Position.Right} style={hiddenHandle} />
     </div>
   );
 }

@@ -2,6 +2,13 @@ import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { User } from "lucide-react";
 import type { EntityData } from "../types/graph.types";
 
+const hiddenHandle: React.CSSProperties = {
+  opacity: 0,
+  pointerEvents: "none",
+  width: 8,
+  height: 8,
+};
+
 export function NodePerson({ data, selected }: NodeProps<Node<EntityData>>) {
   return (
     <div
@@ -15,11 +22,7 @@ export function NodePerson({ data, selected }: NodeProps<Node<EntityData>>) {
         }
       `}
     >
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="bg-(--node-person)! w-2! h-2!"
-      />
+      <Handle type="target" position={Position.Left} style={hiddenHandle} />
       <div className="w-8 h-8 rounded-full bg-(--node-person)/20 flex items-center justify-center">
         <User className="w-4 h-4 text-(--node-person)" />
       </div>
@@ -31,11 +34,7 @@ export function NodePerson({ data, selected }: NodeProps<Node<EntityData>>) {
           <span className="text-xs text-muted-foreground">{data.role}</span>
         )}
       </div>
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="bg-(--node-person)! w-2! h-2!"
-      />
+      <Handle type="source" position={Position.Right} style={hiddenHandle} />
     </div>
   );
 }

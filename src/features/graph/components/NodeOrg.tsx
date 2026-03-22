@@ -2,6 +2,13 @@ import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { Building2 } from "lucide-react";
 import type { EntityData } from "../types/graph.types";
 
+const hiddenHandle: React.CSSProperties = {
+  opacity: 0,
+  pointerEvents: "none",
+  width: 8,
+  height: 8,
+};
+
 export function NodeOrg({ data, selected }: NodeProps<Node<EntityData>>) {
   return (
     <div
@@ -15,11 +22,7 @@ export function NodeOrg({ data, selected }: NodeProps<Node<EntityData>>) {
         }
       `}
     >
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="bg-(--node-org)! w-2! h-2!"
-      />
+      <Handle type="target" position={Position.Left} style={hiddenHandle} />
       <div className="w-10 h-10 rounded-lg bg-(--node-org)/20 flex items-center justify-center">
         <Building2 className="w-5 h-5 text-(--node-org)" />
       </div>
@@ -31,11 +34,7 @@ export function NodeOrg({ data, selected }: NodeProps<Node<EntityData>>) {
           <span className="text-xs text-muted-foreground">{data.type}</span>
         )}
       </div>
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="bg-(--node-org)! w-2! h-2!"
-      />
+      <Handle type="source" position={Position.Right} style={hiddenHandle} />
     </div>
   );
 }

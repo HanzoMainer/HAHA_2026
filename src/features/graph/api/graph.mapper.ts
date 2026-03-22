@@ -62,6 +62,7 @@ function buildNewsMap(links: ApiLink[]): Map<string, NewsItem[]> {
       time: formatDate(link.date),
       cluster: link.label,
       summary: link.desc,
+      fullText: link.full_text,
       url: undefined,
     });
     map.set(nodeId, items);
@@ -149,16 +150,17 @@ export function mapApiResponseToGraphData(
 
   const newsMap = buildNewsMap(activeLinks);
 
-  const edgeGroups = new Map<string, { source: string; target: string; labels: string[] }>();
+  const edgeGroups = new Map<string, { source: string; target: string; labels: string[]; descs: string[] }>();
 
   activeLinks.forEach((link) => {
     const key = `${link.source}→${link.target}`;
     const label = link.label.replace(/_/g, " ").toLowerCase();
     if (!edgeGroups.has(key)) {
-      edgeGroups.set(key, { source: link.source, target: link.target, labels: [] });
+      edgeGroups.set(key, { source: link.source, target: link.target, labels: [], descs: [] });
     }
     const group = edgeGroups.get(key)!;
     if (!group.labels.includes(label)) group.labels.push(label);
+    if (link.desc && !group.descs.includes(link.desc)) group.descs.push(link.desc);
   });
 
   const rawEdges = Array.from(edgeGroups.values()).map((g, i) => ({
@@ -166,6 +168,7 @@ export function mapApiResponseToGraphData(
     source: g.source,
     target: g.target,
     label: g.labels.join("\n"),
+    data: { desc: g.descs.join(" / ") },
     animated: false,
   }));
 

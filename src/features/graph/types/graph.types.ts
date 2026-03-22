@@ -9,6 +9,7 @@ export interface NewsItem {
   time: string;
   cluster: string;
   summary: string;
+  fullText?: string;
   url?: string;
 }
 

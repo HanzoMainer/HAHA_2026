@@ -22,22 +22,25 @@ import { NodeEvent } from "./NodeEvent";
 import type { GraphNode, GraphEdge } from "../types/graph.types";
 import { GitFork, Network } from "lucide-react";
 
+// ---------------------------------------------------------------------------
+// Кастомное ребро с многострочным лейблом
+// ---------------------------------------------------------------------------
+
 function MultiLabelEdge({
   id, sourceX, sourceY, targetX, targetY,
   sourcePosition, targetPosition, data, style, markerEnd,
 }: EdgeProps) {
+  const [hovered, setHovered] = useState(false);
+
   const [edgePath, labelX, labelY] = getSmoothStepPath({
     sourceX, sourceY, sourcePosition,
     targetX, targetY, targetPosition,
   });
 
-  const label = (data as { label?: string } | undefined)?.label ?? "";
+  const edgeData = data as { label?: string; desc?: string } | undefined;
+  const label = edgeData?.label ?? "";
+  const desc = edgeData?.desc ?? "";
   const lines = label.split("\n").filter(Boolean);
-  const lineHeight = 16;
-  const paddingX = 8;
-  const paddingY = 5;
-  const boxWidth = Math.max(...lines.map((l) => l.length)) * 6.5 + paddingX * 2;
-  const boxHeight = lines.length * lineHeight + paddingY * 2;
 
   return (
     <>
@@ -47,23 +50,56 @@ function MultiLabelEdge({
           <div
             style={{
               position: "absolute",
-              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
               pointerEvents: "all",
+              cursor: "default",
+              zIndex: 10,
             }}
             className="nodrag nopan"
+            onClick={(e) => { e.stopPropagation(); setHovered((v) => !v); }}
           >
-            <svg width={boxWidth} height={boxHeight} style={{ overflow: "visible", display: "block" }}>
-              <rect x={0} y={0} width={boxWidth} height={boxHeight} rx={4}
-                fill="oklch(0.34 0 0)" stroke="oklch(0.25 0 0)" strokeWidth={1} />
+            <div
+              style={{
+                background: "oklch(0.34 0 0)",
+                border: "1px solid oklch(0.28 0 0)",
+                borderRadius: 4,
+                padding: "3px 8px",
+                fontSize: 11,
+                color: "oklch(0.75 0 0)",
+                whiteSpace: "nowrap",
+                userSelect: "none",
+                lineHeight: "1.5",
+              }}
+            >
               {lines.map((line, i) => (
-                <text key={i} x={boxWidth / 2}
-                  y={paddingY + i * lineHeight + lineHeight * 0.75}
-                  textAnchor="middle" fill="oklch(0.75 0 0)"
-                  fontSize={11} fontFamily="inherit">
-                  {line}
-                </text>
+                <div key={i}>{line}</div>
               ))}
-            </svg>
+            </div>
+            {hovered && desc && (
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: "calc(100% + 8px)",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: 260,
+                  background: "oklch(0.15 0 0)",
+                  border: "1px solid oklch(0.32 0.04 195)",
+                  borderRadius: 8,
+                  padding: "8px 10px",
+                  fontSize: 11,
+                  lineHeight: "1.6",
+                  color: "oklch(0.85 0 0)",
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.7)",
+                  pointerEvents: "none",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  zIndex: 9999,
+                }}
+              >
+                {desc}
+              </div>
+            )}
           </div>
         </EdgeLabelRenderer>
       )}

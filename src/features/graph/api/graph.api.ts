@@ -13,6 +13,32 @@ export interface QueryResult {
   newsMap: Map<string, NewsItem[]>;
 }
 
+function randomizeDates(response: ApiResponse): ApiResponse {
+  const randomDate = (): string => {
+    const year = [2024, 2025, 2026][Math.floor(Math.random() * 3)];
+    const maxMonth = year === 2026 ? 3 : 12;
+    const month = Math.floor(Math.random() * maxMonth) + 1;
+    const maxDay = new Date(year, month, 0).getDate();
+    const day = Math.floor(Math.random() * maxDay) + 1;
+
+    return (
+      `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}` +
+      "T00:00:00+00:00"
+    );
+  };
+
+  return {
+    ...response,
+    graph: {
+      ...response.graph,
+      links: response.graph.links.map((link) => ({
+        ...link,
+        date: randomDate(),
+      })),
+    },
+  };
+}
+
 export async function fetchGraphByQuery(query: string): Promise<{
   raw: ApiResponse;
   result: QueryResult;
@@ -30,7 +56,7 @@ export async function fetchGraphByQuery(query: string): Promise<{
     raw = await response.json();
   } else {
     await new Promise((resolve) => setTimeout(resolve, 800));
-    raw = mockApiResponse;
+    raw = randomizeDates(mockApiResponse);
   }
 
   const result = mapApiResponseToGraphData(raw);

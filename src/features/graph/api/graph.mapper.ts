@@ -7,6 +7,11 @@ import type {
   NewsItem,
 } from "../types/graph.types";
 
+export interface DateFilter {
+  from: string | null;
+  to: string | null;
+}
+
 function toEntityType(apiType: ApiNodeType): EntityType {
   switch (apiType.toUpperCase()) {
     case "PERSON":
@@ -30,6 +35,18 @@ function formatDate(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+function filterLinksByDate(links: ApiLink[], filter: DateFilter): ApiLink[] {
+  const from = filter.from ? new Date(filter.from).getTime() : null;
+  const to = filter.to ? new Date(filter.to + "T23:59:59Z").getTime() : null;
+
+  return links.filter((link) => {
+    const linkTime = new Date(link.date).getTime();
+    if (from !== null && linkTime < from) return false;
+    if (to !== null && linkTime > to) return false;
+    return true;
+  });
 }
 
 function buildNewsMap(links: ApiLink[]): Map<string, NewsItem[]> {
@@ -110,38 +127,56 @@ function computePositions(
   columns.forEach((ids, col) => {
     const total = (ids.length - 1) * ROW_GAP;
     ids.forEach((id, row) => {
-      pos.set(id, {
-        x: col * COL_GAP,
-        y: row * ROW_GAP - total / 2,
-      });
+      pos.set(id, { x: col * COL_GAP, y: row * ROW_GAP - total / 2 });
     });
   });
 
   return pos;
 }
 
-export function mapApiResponseToGraphData(response: ApiResponse): {
+export function mapApiResponseToGraphData(
+  response: ApiResponse,
+  dateFilter?: DateFilter,
+): {
   graphData: GraphData;
   aiResponse: string;
   newsMap: Map<string, NewsItem[]>;
 } {
   const { answer, graph } = response;
-  const newsMap = buildNewsMap(graph.links);
 
-  const edgeGroups = new Map<string, { source: string; target: string; labels: string[] }>();
+  const activeLinks = dateFilter
+    ? filterLinksByDate(graph.links, dateFilter)
+    : graph.links;
 
-  graph.links.forEach((link) => {
+  const mentionedIds = new Set<string>();
+  activeLinks.forEach((l) => {
+    mentionedIds.add(l.source);
+    mentionedIds.add(l.target);
+  });
+
+  const activeNodes = dateFilter
+    ? graph.nodes.filter((n) => mentionedIds.has(n.id))
+    : graph.nodes;
+
+  const newsMap = buildNewsMap(activeLinks);
+
+  const edgeGroups = new Map<
+    string,
+    { source: string; target: string; labels: string[] }
+  >();
+
+  activeLinks.forEach((link) => {
     const key = `${link.source}→${link.target}`;
     const label = link.label.replace(/_/g, " ").toLowerCase();
-
     if (!edgeGroups.has(key)) {
-      edgeGroups.set(key, { source: link.source, target: link.target, labels: [] });
+      edgeGroups.set(key, {
+        source: link.source,
+        target: link.target,
+        labels: [],
+      });
     }
-
     const group = edgeGroups.get(key)!;
-    if (!group.labels.includes(label)) {
-      group.labels.push(label);
-    }
+    if (!group.labels.includes(label)) group.labels.push(label);
   });
 
   const rawEdges = Array.from(edgeGroups.values()).map((g, i) => ({
@@ -153,11 +188,11 @@ export function mapApiResponseToGraphData(response: ApiResponse): {
   }));
 
   const positions = computePositions(
-    graph.nodes.map((n) => n.id),
+    activeNodes.map((n) => n.id),
     rawEdges,
   );
 
-  const nodes = graph.nodes.map((apiNode) => ({
+  const nodes = activeNodes.map((apiNode) => ({
     id: apiNode.id,
     type: toEntityType(apiNode.type),
     position: positions.get(apiNode.id) ?? { x: 0, y: 0 },

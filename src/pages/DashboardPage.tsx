@@ -8,15 +8,18 @@ import { Button } from "@/shared/components/button";
 import { Badge } from "@/shared/components/badge";
 import { Network, X } from "lucide-react";
 import { fetchGraphByQuery } from "@/features/graph/api/graph.api";
+import { mapApiResponseToGraphData } from "@/features/graph/api/graph.mapper";
 import type {
   GraphData,
   GraphNode,
   NewsItem,
+  ApiResponse,
 } from "@/features/graph/types/graph.types";
 
 const EMPTY_GRAPH: GraphData = { nodes: [], edges: [] };
 
 export function DashboardPage() {
+  const [rawResponse, setRawResponse] = useState<ApiResponse | null>(null);
   const [graphData, setGraphData] = useState<GraphData>(EMPTY_GRAPH);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
@@ -30,7 +33,8 @@ export function DashboardPage() {
     setRightPanelOpen(false);
 
     try {
-      const result = await fetchGraphByQuery(query);
+      const { raw, result } = await fetchGraphByQuery(query);
+      setRawResponse(raw);
       setGraphData(result.graphData);
       setAiResponse(result.aiResponse);
       setNewsMap(result.newsMap);
@@ -44,16 +48,33 @@ export function DashboardPage() {
 
   const handleNodeSelect = useCallback((node: GraphNode | null) => {
     setSelectedNode(node);
-    if (node) {
-      setRightPanelOpen(true);
-    } else {
-      setRightPanelOpen(false);
-    }
+    setRightPanelOpen(node !== null);
   }, []);
 
-  const handleFiltersApply = useCallback((filters: AppliedFilters) => {
-    console.log("Applied filters:", filters);
-  }, []);
+  const handleFiltersApply = useCallback(
+    (filters: AppliedFilters) => {
+      if (!rawResponse) return;
+
+      const dateFilter =
+        filters.dateFrom || filters.dateTo
+          ? { from: filters.dateFrom, to: filters.dateTo }
+          : undefined;
+
+      const result = mapApiResponseToGraphData(rawResponse, dateFilter);
+
+      setGraphData(result.graphData);
+      setNewsMap(result.newsMap);
+      setSelectedNode((prev) => {
+        if (!prev) return null;
+        const stillExists = result.graphData.nodes.some(
+          (n) => n.id === prev.id,
+        );
+        if (!stillExists) setRightPanelOpen(false);
+        return stillExists ? prev : null;
+      });
+    },
+    [rawResponse],
+  );
 
   const nodeNews: NewsItem[] = selectedNode
     ? (newsMap.get(selectedNode.id) ?? [])
@@ -76,7 +97,7 @@ export function DashboardPage() {
           </div>
         </div>
 
-        <FilterBar onApply={handleFiltersApply} />
+        <FilterBar onApply={handleFiltersApply} disabled={!rawResponse} />
 
         <div className="flex-1" />
       </header>

@@ -38,6 +38,7 @@ export const EMPTY_FILTERS: AppliedFilters = {
 
 interface FilterBarProps {
   onApply: (filters: AppliedFilters) => void;
+  disabled?: boolean;
 }
 
 const CLUSTERS = [
@@ -114,7 +115,7 @@ function countActive(f: AppliedFilters) {
   );
 }
 
-export function FilterBar({ onApply }: FilterBarProps) {
+export function FilterBar({ onApply, disabled = false }: FilterBarProps) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [applied, setApplied] = useState<AppliedFilters>(EMPTY_FILTERS);
@@ -194,6 +195,7 @@ export function FilterBar({ onApply }: FilterBarProps) {
             variant="outline"
             size="sm"
             className="h-8 gap-2 border-border text-muted-foreground hover:text-foreground"
+            disabled={disabled}
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
             Фильтры

@@ -189,7 +189,7 @@ export function GraphCanvas({
         proOptions={{ hideAttribution: true }}
       >
         <Background color="var(--border)" gap={20} size={1} />
-        <Controls className="bg-card! border-border! rounded-lg! [&>button]:bg-card! [&>button]:border-border! [&>button]:text-foreground! [&>button:hover]:bg-secondary!" />
+        <Controls showInteractive={false} className="bg-card! border-border! rounded-lg! [&>button]:bg-card! [&>button]:border-border! [&>button]:text-foreground! [&>button:hover]:bg-secondary!" />
         <MiniMap
           className="bg-card! border-border! rounded-lg!"
           nodeColor={(node) => {

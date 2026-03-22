@@ -1,16 +1,20 @@
-import type { NewsItem, ApiResponse } from "../types/graph.types";
+import type { NewsItem, ApiResponse, GraphData } from "../types/graph.types";
 import { mapApiResponseToGraphData } from "./graph.mapper";
 import { mockApiResponse } from "./mock.response";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 
 export interface QueryResult {
-  graphData: import("../types/graph.types").GraphData;
+  graphData: GraphData;
   aiResponse: string;
   newsMap: Map<string, NewsItem[]>;
 }
 
-export async function fetchGraphByQuery(query: string): Promise<QueryResult> {
+export async function fetchGraphByQuery(
+  query: string,
+): Promise<{ raw: ApiResponse; result: QueryResult }> {
+  let raw: ApiResponse;
+
   if (API_URL) {
     const response = await fetch(`${API_URL}/query`, {
       method: "POST",
@@ -18,14 +22,13 @@ export async function fetchGraphByQuery(query: string): Promise<QueryResult> {
       body: JSON.stringify({ query }),
     });
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-
-    const data: ApiResponse = await response.json();
-    return mapApiResponseToGraphData(data);
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
+    raw = await response.json();
+  } else {
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    raw = mockApiResponse;
   }
 
-  await new Promise((resolve) => setTimeout(resolve, 800));
-  return mapApiResponseToGraphData(mockApiResponse);
+  const result = mapApiResponseToGraphData(raw);
+  return { raw, result };
 }

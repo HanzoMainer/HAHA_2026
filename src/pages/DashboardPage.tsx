@@ -86,8 +86,60 @@ export function DashboardPage() {
   const isEmpty = graphData.nodes.length === 0 && !isLoading;
 
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
-      <header className="h-14 shrink-0 bg-card border-b border-border flex items-center px-4 gap-4">
+    <div className="h-screen w-screen flex flex-col overflow-hidden">
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 0,
+          overflow: "hidden",
+          pointerEvents: "none",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            width: 600,
+            height: 600,
+            borderRadius: "50%",
+            background: "oklch(0.75 0.15 195)",
+            opacity: 0.18,
+            filter: "blur(90px)",
+            top: -150,
+            left: -150,
+            animation: "gradientDrift1 14s ease-in-out infinite alternate",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            width: 500,
+            height: 500,
+            borderRadius: "50%",
+            background: "oklch(0.65 0.18 280)",
+            opacity: 0.14,
+            filter: "blur(100px)",
+            bottom: -100,
+            right: -100,
+            animation: "gradientDrift2 18s ease-in-out infinite alternate",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            width: 400,
+            height: 400,
+            borderRadius: "50%",
+            background: "oklch(0.7 0.15 145)",
+            opacity: 0.08,
+            filter: "blur(110px)",
+            top: "40%",
+            left: "45%",
+            animation: "gradientDrift3 22s ease-in-out infinite alternate",
+          }}
+        />
+      </div>
+      <header className="h-14 shrink-0 border-b border-border flex items-center px-4 gap-4">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
             <Network className="w-4 h-4 text-primary" />
@@ -137,7 +189,7 @@ export function DashboardPage() {
           )}
 
           {isLoading && (
-            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="absolute inset-0 backdrop-blur-sm z-50 flex items-center justify-center">
               <div className="flex flex-col items-center gap-4">
                 <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
                 <p className="text-sm text-muted-foreground">Строю граф...</p>

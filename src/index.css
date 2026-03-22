@@ -128,3 +128,46 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes gradientDrift1 {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  100% {
+    transform: translate(80px, 50px) scale(1.15);
+  }
+}
+
+@keyframes gradientDrift2 {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  100% {
+    transform: translate(-60px, -70px) scale(0.9);
+  }
+}
+
+@keyframes gradientDrift3 {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  100% {
+    transform: translate(50px, -60px) scale(1.2);
+  }
+}
+
+@keyframes gradientDrift1 {
+  to {
+    transform: translate(80px, 50px) scale(1.15);
+  }
+}
+@keyframes gradientDrift2 {
+  to {
+    transform: translate(-60px, -70px) scale(0.9);
+  }
+}
+@keyframes gradientDrift3 {
+  to {
+    transform: translate(50px, -60px) scale(1.2);
+  }
+}

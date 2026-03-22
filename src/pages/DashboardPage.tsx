@@ -8,6 +8,7 @@ import { Button } from "@/shared/components/button";
 import { Badge } from "@/shared/components/badge";
 import { Network, X } from "lucide-react";
 import { fetchGraphByQuery } from "@/features/graph/api/graph.api";
+import type { DateRangeBounds } from "@/features/graph/api/graph.api";
 import { mapApiResponseToGraphData } from "@/features/graph/api/graph.mapper";
 import type {
   GraphData,
@@ -26,6 +27,7 @@ export function DashboardPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState("");
   const [newsMap, setNewsMap] = useState<Map<string, NewsItem[]>>(new Map());
+  const [dateRange, setDateRange] = useState<DateRangeBounds | null>(null);
 
   const handleQuery = useCallback(async (query: string) => {
     setIsLoading(true);
@@ -33,11 +35,12 @@ export function DashboardPage() {
     setRightPanelOpen(false);
 
     try {
-      const { raw, result } = await fetchGraphByQuery(query);
+      const { raw, result, dateRange: range } = await fetchGraphByQuery(query);
       setRawResponse(raw);
       setGraphData(result.graphData);
       setAiResponse(result.aiResponse);
       setNewsMap(result.newsMap);
+      setDateRange(range);
     } catch (err) {
       console.error("Query failed:", err);
       setAiResponse("Не удалось получить данные. Попробуйте ещё раз.");
@@ -61,9 +64,9 @@ export function DashboardPage() {
           : undefined;
 
       const result = mapApiResponseToGraphData(rawResponse, dateFilter);
-
       setGraphData(result.graphData);
       setNewsMap(result.newsMap);
+
       setSelectedNode((prev) => {
         if (!prev) return null;
         const stillExists = result.graphData.nodes.some(
@@ -97,7 +100,11 @@ export function DashboardPage() {
           </div>
         </div>
 
-        <FilterBar onApply={handleFiltersApply} disabled={!rawResponse} />
+        <FilterBar
+          onApply={handleFiltersApply}
+          disabled={!rawResponse}
+          dateRange={dateRange}
+        />
 
         <div className="flex-1" />
       </header>

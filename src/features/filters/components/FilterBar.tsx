@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react";
+import { useState, useEffect } from "react";
 import { Badge } from "@/shared/components/badge";
 import { Button } from "@/shared/components/button";
 import { Checkbox } from "@/shared/components/checkbox";
-import { Input } from "@/shared/components/input";
 import { Label } from "@/shared/components/label";
 import { Separator } from "@/shared/components/separator";
+import { Slider } from "@/shared/components/slider";
 import {
   Popover,
   PopoverContent,
@@ -36,9 +36,15 @@ export const EMPTY_FILTERS: AppliedFilters = {
   dateTo: null,
 };
 
+interface DateRangeBounds {
+  min: string;
+  max: string;
+}
+
 interface FilterBarProps {
   onApply: (filters: AppliedFilters) => void;
   disabled?: boolean;
+  dateRange?: DateRangeBounds | null;
 }
 
 const CLUSTERS = [
@@ -59,52 +65,51 @@ const ENTITY_TYPES: {
   { value: "event", label: "События", Icon: Calendar },
 ];
 
-function formatDateInput(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 8);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 4) return `${digits.slice(0, 2)}-${digits.slice(2)}`;
-  return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4, 8)}`;
+function dateToMonthIdx(iso: string): number {
+  const d = new Date(iso);
+  return d.getFullYear() * 12 + d.getMonth();
 }
 
-function parseDate(value: string): Date | null {
-  const match = value.match(/^(\d{2})-(\d{2})-(\d{4})$/);
-  if (!match) return null;
-  const [, dd, mm, yyyy] = match;
-  const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
-  if (
-    d.getFullYear() !== Number(yyyy) ||
-    d.getMonth() !== Number(mm) - 1 ||
-    d.getDate() !== Number(dd)
-  )
-    return null;
-  return d;
+function monthIdxToIso(idx: number): string {
+  const year = Math.floor(idx / 12);
+  const month = idx % 12;
+  return `${year}-${String(month + 1).padStart(2, "0")}-01`;
 }
 
-function toIso(value: string): string | null {
-  const d = parseDate(value);
-  if (!d) return null;
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
+const MONTH_LABELS = [
+  "янв",
+  "фев",
+  "мар",
+  "апр",
+  "май",
+  "июн",
+  "июл",
+  "авг",
+  "сен",
+  "окт",
+  "ноя",
+  "дек",
+];
 
-function isoToDisplay(iso: string | null): string {
-  if (!iso) return "";
-  const [yyyy, mm, dd] = iso.split("-");
-  return `${dd}-${mm}-${yyyy}`;
+function monthIdxToLabel(idx: number): string {
+  return `${MONTH_LABELS[idx % 12]} ${Math.floor(idx / 12)}`;
 }
 
 interface Draft {
   clusters: string[];
   entityTypes: EntityFilterType[];
-  rawFrom: string;
-  rawTo: string;
+  sliderValue: [number, number] | null;
 }
 
-const EMPTY_DRAFT: Draft = {
-  clusters: [],
-  entityTypes: [],
-  rawFrom: "",
-  rawTo: "",
-};
+function makeEmptyDraft(dateRange?: DateRangeBounds | null): Draft {
+  return {
+    clusters: [],
+    entityTypes: [],
+    sliderValue: dateRange
+      ? [dateToMonthIdx(dateRange.min), dateToMonthIdx(dateRange.max)]
+      : null,
+  };
+}
 
 function countActive(f: AppliedFilters) {
   return (
@@ -115,25 +120,59 @@ function countActive(f: AppliedFilters) {
   );
 }
 
-export function FilterBar({ onApply, disabled = false }: FilterBarProps) {
+export function FilterBar({
+  onApply,
+  disabled = false,
+  dateRange,
+}: FilterBarProps) {
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
+  const [draft, setDraft] = useState<Draft>(() => makeEmptyDraft(dateRange));
   const [applied, setApplied] = useState<AppliedFilters>(EMPTY_FILTERS);
 
+  useEffect(() => {
+    if (!dateRange) return;
+    setDraft((prev) => ({
+      ...prev,
+      sliderValue: [
+        dateToMonthIdx(dateRange.min),
+        dateToMonthIdx(dateRange.max),
+      ],
+    }));
+  }, [dateRange]);
+
+  const sliderMin = dateRange ? dateToMonthIdx(dateRange.min) : 0;
+  const sliderMax = dateRange ? dateToMonthIdx(dateRange.max) : 0;
   const activeCount = countActive(applied);
-  const hasActive = activeCount > 0;
 
   const handleOpenChange = (next: boolean) => {
     if (next) {
+      const appliedSlider: [number, number] | null = dateRange
+        ? applied.dateFrom || applied.dateTo
+          ? [
+              applied.dateFrom
+                ? dateToMonthIdx(applied.dateFrom)
+                : dateToMonthIdx(dateRange.min),
+              applied.dateTo
+                ? dateToMonthIdx(applied.dateTo)
+                : dateToMonthIdx(dateRange.max),
+            ]
+          : [dateToMonthIdx(dateRange.min), dateToMonthIdx(dateRange.max)]
+        : null;
+
       setDraft({
         clusters: applied.clusters,
         entityTypes: applied.entityTypes,
-        rawFrom: isoToDisplay(applied.dateFrom),
-        rawTo: isoToDisplay(applied.dateTo),
+        sliderValue: appliedSlider,
       });
     }
     setOpen(next);
   };
+
+  const handleSliderChange = (value: number[]) =>
+    setDraft((p) => ({
+      ...p,
+      sliderValue: [value[0], value[1]] as [number, number],
+    }));
 
   const toggleCluster = (id: string) =>
     setDraft((p) => ({
@@ -151,41 +190,43 @@ export function FilterBar({ onApply, disabled = false }: FilterBarProps) {
         : [...p.entityTypes, type],
     }));
 
-  const handleDateChange = (field: "rawFrom" | "rawTo", value: string) =>
-    setDraft((p) => ({ ...p, [field]: formatDateInput(value) }));
-
-  const dateErrors = useMemo(() => {
-    const from = draft.rawFrom.length === 10 ? parseDate(draft.rawFrom) : null;
-    const to = draft.rawTo.length === 10 ? parseDate(draft.rawTo) : null;
-    return {
-      from: draft.rawFrom.length === 10 && !from,
-      to: draft.rawTo.length === 10 && !to,
-      range: !!from && !!to && from > to,
-    };
-  }, [draft.rawFrom, draft.rawTo]);
-
-  const hasErrors = dateErrors.from || dateErrors.to || dateErrors.range;
-
   const handleApply = () => {
-    if (hasErrors) return;
+    let dateFrom: string | null = null;
+    let dateTo: string | null = null;
+
+    if (draft.sliderValue && dateRange) {
+      const [fromIdx, toIdx] = draft.sliderValue;
+      const isFullRange = fromIdx === sliderMin && toIdx === sliderMax;
+      if (!isFullRange) {
+        dateFrom = monthIdxToIso(fromIdx);
+        const nextMonth = new Date(monthIdxToIso(toIdx + 1));
+        nextMonth.setDate(nextMonth.getDate() - 1);
+        dateTo = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, "0")}-${String(nextMonth.getDate()).padStart(2, "0")}`;
+      }
+    }
+
     const next: AppliedFilters = {
       clusters: draft.clusters,
       entityTypes: draft.entityTypes,
-      dateFrom: toIso(draft.rawFrom),
-      dateTo: toIso(draft.rawTo),
+      dateFrom,
+      dateTo,
     };
     setApplied(next);
     onApply(next);
     setOpen(false);
   };
 
-  const handleClearDraft = () => setDraft(EMPTY_DRAFT);
-
   const handleReset = () => {
-    setDraft(EMPTY_DRAFT);
+    const empty = makeEmptyDraft(dateRange);
+    setDraft(empty);
     setApplied(EMPTY_FILTERS);
     onApply(EMPTY_FILTERS);
   };
+
+  const sliderLabel =
+    dateRange && draft.sliderValue
+      ? `${monthIdxToLabel(draft.sliderValue[0])} — ${monthIdxToLabel(draft.sliderValue[1])}`
+      : null;
 
   return (
     <div className="flex items-center gap-2">
@@ -199,7 +240,7 @@ export function FilterBar({ onApply, disabled = false }: FilterBarProps) {
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
             Фильтры
-            {hasActive && (
+            {activeCount > 0 && (
               <Badge
                 variant="default"
                 className="h-4 px-1.5 text-[10px] ml-0.5"
@@ -213,7 +254,7 @@ export function FilterBar({ onApply, disabled = false }: FilterBarProps) {
         <PopoverContent
           align="start"
           sideOffset={8}
-          className="w-72 p-0 bg-card border-border"
+          className="w-76 p-0 bg-card border-border"
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <span className="text-sm font-semibold text-foreground">
@@ -235,57 +276,33 @@ export function FilterBar({ onApply, disabled = false }: FilterBarProps) {
                   Период
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label
-                    htmlFor="f-from"
-                    className="text-[11px] text-muted-foreground"
-                  >
-                    От
-                  </Label>
-                  <Input
-                    id="f-from"
-                    value={draft.rawFrom}
-                    onChange={(e) =>
-                      handleDateChange("rawFrom", e.target.value)
-                    }
-                    placeholder="дд-мм-гггг"
-                    inputMode="numeric"
-                    maxLength={10}
-                    className="h-7 text-xs"
-                  />
-                  {dateErrors.from && (
-                    <p className="text-[10px] text-destructive">
-                      Неверная дата
+              {dateRange ? (
+                <div>
+                  {sliderLabel && (
+                    <p className="text-xs font-medium text-foreground mb-2">
+                      {sliderLabel}
                     </p>
                   )}
-                </div>
-                <div className="space-y-1">
-                  <Label
-                    htmlFor="f-to"
-                    className="text-[11px] text-muted-foreground"
-                  >
-                    До
-                  </Label>
-                  <Input
-                    id="f-to"
-                    value={draft.rawTo}
-                    onChange={(e) => handleDateChange("rawTo", e.target.value)}
-                    placeholder="дд-мм-гггг"
-                    inputMode="numeric"
-                    maxLength={10}
-                    className="h-7 text-xs"
+                  <Slider
+                    min={sliderMin}
+                    max={sliderMax}
+                    step={1}
+                    value={draft.sliderValue ?? [sliderMin, sliderMax]}
+                    onValueChange={handleSliderChange}
+                    className="w-full"
                   />
-                  {dateErrors.to && (
-                    <p className="text-[10px] text-destructive">
-                      Неверная дата
-                    </p>
-                  )}
+                  <div className="flex justify-between mt-1.5">
+                    <span className="text-[10px] text-muted-foreground">
+                      {monthIdxToLabel(sliderMin)}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {monthIdxToLabel(sliderMax)}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              {dateErrors.range && (
-                <p className="text-[10px] text-destructive mt-1">
-                  Дата начала позже даты конца
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Доступно после запроса
                 </p>
               )}
             </section>
@@ -355,19 +372,14 @@ export function FilterBar({ onApply, disabled = false }: FilterBarProps) {
           </div>
 
           <div className="flex gap-2 px-4 py-3 border-t border-border">
-            <Button
-              size="sm"
-              className="flex-1 h-8"
-              onClick={handleApply}
-              disabled={hasErrors}
-            >
+            <Button size="sm" className="flex-1 h-8" onClick={handleApply}>
               Применить
             </Button>
             <Button
               size="sm"
               variant="ghost"
               className="h-8 text-muted-foreground hover:text-foreground"
-              onClick={handleClearDraft}
+              onClick={() => setDraft(makeEmptyDraft(dateRange))}
             >
               Очистить
             </Button>
@@ -375,7 +387,7 @@ export function FilterBar({ onApply, disabled = false }: FilterBarProps) {
         </PopoverContent>
       </Popover>
 
-      {hasActive && (
+      {activeCount > 0 && (
         <Button
           variant="ghost"
           size="sm"

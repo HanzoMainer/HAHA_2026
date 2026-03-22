@@ -90,10 +90,7 @@ function computePositions(
 
   nodeIds
     .filter((id) => inCount.get(id) === 0)
-    .forEach((id) => {
-      level.set(id, 0);
-      queue.push(id);
-    });
+    .forEach((id) => { level.set(id, 0); queue.push(id); });
 
   if (!queue.length && nodeIds.length) {
     level.set(nodeIds[0], 0);
@@ -106,16 +103,11 @@ function computePositions(
     const nextLevel = (level.get(id) ?? 0) + 1;
     edges
       .filter((e) => e.source === id && !level.has(e.target))
-      .forEach((e) => {
-        level.set(e.target, nextLevel);
-        queue.push(e.target);
-      });
+      .forEach((e) => { level.set(e.target, nextLevel); queue.push(e.target); });
   }
 
   const maxLevel = Math.max(0, ...level.values());
-  nodeIds.forEach((id) => {
-    if (!level.has(id)) level.set(id, maxLevel + 1);
-  });
+  nodeIds.forEach((id) => { if (!level.has(id)) level.set(id, maxLevel + 1); });
 
   const columns = new Map<number, string[]>();
   level.forEach((col, id) => {
@@ -149,10 +141,7 @@ export function mapApiResponseToGraphData(
     : graph.links;
 
   const mentionedIds = new Set<string>();
-  activeLinks.forEach((l) => {
-    mentionedIds.add(l.source);
-    mentionedIds.add(l.target);
-  });
+  activeLinks.forEach((l) => { mentionedIds.add(l.source); mentionedIds.add(l.target); });
 
   const activeNodes = dateFilter
     ? graph.nodes.filter((n) => mentionedIds.has(n.id))
@@ -160,20 +149,13 @@ export function mapApiResponseToGraphData(
 
   const newsMap = buildNewsMap(activeLinks);
 
-  const edgeGroups = new Map<
-    string,
-    { source: string; target: string; labels: string[] }
-  >();
+  const edgeGroups = new Map<string, { source: string; target: string; labels: string[] }>();
 
   activeLinks.forEach((link) => {
     const key = `${link.source}→${link.target}`;
     const label = link.label.replace(/_/g, " ").toLowerCase();
     if (!edgeGroups.has(key)) {
-      edgeGroups.set(key, {
-        source: link.source,
-        target: link.target,
-        labels: [],
-      });
+      edgeGroups.set(key, { source: link.source, target: link.target, labels: [] });
     }
     const group = edgeGroups.get(key)!;
     if (!group.labels.includes(label)) group.labels.push(label);
@@ -206,5 +188,28 @@ export function mapApiResponseToGraphData(
     graphData: { nodes, edges: rawEdges },
     aiResponse: answer,
     newsMap,
+  };
+}
+
+export interface DateRangeBounds {
+  min: string;
+  max: string;
+}
+
+export function extractDateRange(response: ApiResponse): DateRangeBounds | null {
+  const timestamps = response.graph.links
+    .map((l) => new Date(l.date).getTime())
+    .filter((t) => !isNaN(t));
+
+  if (!timestamps.length) return null;
+
+  const toIsoDate = (t: number) => {
+    const d = new Date(t);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+
+  return {
+    min: toIsoDate(Math.min(...timestamps)),
+    max: toIsoDate(Math.max(...timestamps)),
   };
 }

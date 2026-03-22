@@ -1,6 +1,9 @@
 import type { NewsItem, ApiResponse, GraphData } from "../types/graph.types";
-import { mapApiResponseToGraphData } from "./graph.mapper";
+import { mapApiResponseToGraphData, extractDateRange } from "./graph.mapper";
+import type { DateRangeBounds } from "./graph.mapper";
 import { mockApiResponse } from "./mock.response";
+
+export type { DateRangeBounds };
 
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 
@@ -10,9 +13,11 @@ export interface QueryResult {
   newsMap: Map<string, NewsItem[]>;
 }
 
-export async function fetchGraphByQuery(
-  query: string,
-): Promise<{ raw: ApiResponse; result: QueryResult }> {
+export async function fetchGraphByQuery(query: string): Promise<{
+  raw: ApiResponse;
+  result: QueryResult;
+  dateRange: DateRangeBounds | null;
+}> {
   let raw: ApiResponse;
 
   if (API_URL) {
@@ -21,7 +26,6 @@ export async function fetchGraphByQuery(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query }),
     });
-
     if (!response.ok) throw new Error(`API error: ${response.status}`);
     raw = await response.json();
   } else {
@@ -30,5 +34,7 @@ export async function fetchGraphByQuery(
   }
 
   const result = mapApiResponseToGraphData(raw);
-  return { raw, result };
+  const dateRange = extractDateRange(raw);
+
+  return { raw, result, dateRange };
 }

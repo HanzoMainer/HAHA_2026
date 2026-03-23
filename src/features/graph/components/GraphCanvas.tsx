@@ -22,10 +22,6 @@ import { NodeEvent } from "./NodeEvent";
 import type { GraphNode, GraphEdge } from "../types/graph.types";
 import { GitFork, Network } from "lucide-react";
 
-// ---------------------------------------------------------------------------
-// Кастомное ребро с многострочным лейблом
-// ---------------------------------------------------------------------------
-
 function MultiLabelEdge({
   id, sourceX, sourceY, targetX, targetY,
   sourcePosition, targetPosition, data, style, markerEnd,
